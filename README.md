@@ -1,4 +1,4 @@
-# shadcn-ui Drag-to-Resize Sidebar
+# A shadcn/ui Resizeable Sidebar
 
 A extended shadcn-ui drag-to-resize `<Sidebar>` component for Next.js applications with persisted state drag-to-resize functionality.
 
