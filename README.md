@@ -2,7 +2,7 @@
 
 A extended shadcn-ui drag-to-resize `<Sidebar>` component for Next.js applications with persisted state drag-to-resize functionality.
 
-Demo: [shadcn-resize-sidebar.vercel.app](shadcn-resize-sidebar.vercel.app)
+Demo: [shadcn-resize-sidebar.vercel.app](https://shadcn-resize-sidebar.vercel.app/)
 
 ## Features
 
