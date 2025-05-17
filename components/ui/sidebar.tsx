@@ -16,8 +16,8 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useInsetResize } from "@/hooks/use-inset-resize";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useSidebarResize } from "@/hooks/use-sidebar-resize";
 import { mergeButtonRefs } from "@/lib/merge-button-refs";
 import { cn } from "@/lib/utils";
 
@@ -352,7 +352,8 @@ const SidebarRail = React.forwardRef<
 	const { toggleSidebar, setWidth, state, width, setIsDraggingRail } =
 		useSidebar();
 
-	const { dragRef, handleMouseDown } = useSidebarResize({
+	const { dragRef, handleMouseDown } = useInsetResize({
+		direction: "right",
 		enableDrag,
 		onResize: setWidth,
 		onToggle: toggleSidebar,
@@ -361,6 +362,8 @@ const SidebarRail = React.forwardRef<
 		minResizeWidth: MIN_SIDEBAR_WIDTH,
 		maxResizeWidth: MAX_SIDEBAR_WIDTH,
 		setIsDraggingRail,
+		widthCookieName: "sidebar:width",
+		widthCookieMaxAge: 60 * 60 * 24 * 7, // 1 week
 	});
 
 	//* Merge external ref with our dragRef
