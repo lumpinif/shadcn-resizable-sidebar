@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Drag-to-Resize Sidebar",
+  title: "shadcn-resizable-sidebar",
   description: "Drag-to-Resize Sidebar built with shadcn-ui",
 };
 
