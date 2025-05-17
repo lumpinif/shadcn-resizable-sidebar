@@ -1,6 +1,6 @@
 import React from "react";
 
-export interface UseInsetResizeProps {
+export interface UseSidebarResizeProps {
 	/**
 	 * Direction of the resize handle
 	 * - 'left': Handle is on left side (for right-positioned panels)
@@ -119,11 +119,11 @@ function formatWidth(value: number, unit: "rem" | "px"): string {
 }
 
 /**
- * A versatile hook for handling resizable inset panels
+ * A versatile hook for handling resizable sidebar (or inset) panels
  * Works for both sidebar (left side) and artifacts (right side) panels
  * Supports VS Code-like continuous drag to collapse/expand
  */
-export function useInsetResize({
+export function useSidebarResize({
 	direction = "right",
 	currentWidth,
 	onResize,
@@ -140,7 +140,7 @@ export function useInsetResize({
 	widthCookieName,
 	widthCookieMaxAge = 60 * 60 * 24 * 7, // 1 week default
 	isNested = false,
-}: UseInsetResizeProps) {
+}: UseSidebarResizeProps) {
 	// Refs for tracking drag state
 	const dragRef = React.useRef<HTMLButtonElement>(null);
 	const startWidth = React.useRef(0);
