@@ -15,10 +15,10 @@ Demo: [shadcn-resize-sidebar.vercel.app](https://shadcn-resize-sidebar.vercel.ap
 
 ## Demo Stack
 
-- Next.js 14
+- Next.js 15
 - TypeScript
 - shadcn/ui
-- Tailwind CSS
+- Tailwind v4
 - Radix UI
 
 ## Getting Started
@@ -26,8 +26,8 @@ Demo: [shadcn-resize-sidebar.vercel.app](https://shadcn-resize-sidebar.vercel.ap
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/lumpinif/drag-to-resize-sidebar.git
-cd drag-to-resize-sidebar
+git clone https://github.com/lumpinif/shadcn-resizable-sidebar.git
+cd shadcn-resizable-sidebar
 ```
 
 2. Install dependencies:
