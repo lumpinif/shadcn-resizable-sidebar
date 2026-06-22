@@ -89,17 +89,29 @@ dependency or codemod work.
     still pass.
   - Mobile Sheet still reports missing title/description warnings; this remains
     scheduled for phase 3.
-- [ ] Commit with `fix: repair sidebar tokens and animations`.
+- [x] Commit with `fix: repair sidebar tokens and animations`.
 
 ## Phase 2: Low-Risk Dependency Alignment
 
-- [ ] Keep Next.js on the 15.3.x line.
-- [ ] Align `next` and `eslint-config-next` to the same 15.3.x patch.
-- [ ] Update Tailwind v4 packages within the v4 line.
-- [ ] Update `tailwind-merge` within the v3 line.
-- [ ] Update `next-themes` within the v0 line.
-- [ ] Refresh React 19 lockfile resolution without moving to a React major.
-- [ ] Re-run build and Agent Browser smoke checks.
+- [x] Keep Next.js on the 15.3.x line.
+- [x] Align `next` and `eslint-config-next` to the same 15.3.x patch.
+  - Updated both to `15.3.9`.
+- [x] Update Tailwind v4 packages within the v4 line.
+  - Updated `tailwindcss` and `@tailwindcss/postcss` to `^4.3.1`.
+- [x] Update `tailwind-merge` within the v3 line.
+  - Updated to `^3.6.0`.
+- [x] Update `next-themes` within the v0 line.
+  - Updated to `^0.4.6`.
+- [x] Refresh React 19 lockfile resolution without moving to a React major.
+  - Updated `react` and `react-dom` to `^19.2.7`.
+- [x] Re-run build and Agent Browser smoke checks.
+  - `bun run build` passes on Next.js 15.3.9 with the known baseline ESLint
+    rule-load warning and `metadataBase` warning.
+  - `bun run lint` still fails with the known baseline
+    `@typescript-eslint/no-unused-expressions` rule-load error.
+  - Desktop render, persisted width, dropdown animation, drag resize, and
+    mobile Sheet animation pass.
+  - Mobile Sheet title/description warnings remain scheduled for phase 3.
 - [ ] Commit with `chore: align low-risk dependencies`.
 
 ## Phase 3: Port Official Sidebar Fixes Without Resize Changes
