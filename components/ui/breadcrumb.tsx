@@ -38,7 +38,7 @@ function BreadcrumbLink({
 }: React.ComponentProps<"a"> & {
 	asChild?: boolean;
 }) {
-	const Comp = asChild ? SlotPrimitive.Slot : "a";
+	const Comp = asChild ? SlotPrimitive.Root : "a";
 
 	return (
 		<Comp

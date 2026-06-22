@@ -45,7 +45,7 @@ function Button({
 	VariantProps<typeof buttonVariants> & {
 		asChild?: boolean;
 	}) {
-	const Comp = asChild ? SlotPrimitive.Slot : "button";
+	const Comp = asChild ? SlotPrimitive.Root : "button";
 
 	return (
 		<Comp

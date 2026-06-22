@@ -118,6 +118,33 @@ function toPx(width: string): number {
 	return unit === "rem" ? value * 16 : value;
 }
 
+function isPointerCaptureError(error: unknown): boolean {
+	return (
+		error instanceof DOMException &&
+		(error.name === "NotFoundError" || error.name === "InvalidStateError")
+	);
+}
+
+function setPointerCaptureSafe(target: HTMLElement, pointerId: number) {
+	try {
+		target.setPointerCapture(pointerId);
+	} catch (error) {
+		if (!isPointerCaptureError(error)) {
+			throw error;
+		}
+	}
+}
+
+function releasePointerCaptureSafe(target: HTMLElement, pointerId: number) {
+	try {
+		target.releasePointerCapture(pointerId);
+	} catch (error) {
+		if (!isPointerCaptureError(error)) {
+			throw error;
+		}
+	}
+}
+
 /**
  * Format width value with unit
  */
@@ -260,7 +287,7 @@ export function useSidebarResize({
 			activePointerId.current = pointerId;
 
 			if (pointerId !== null) {
-				target.setPointerCapture(pointerId);
+				setPointerCaptureSafe(target, pointerId);
 			}
 
 			if (!enableDrag) {
@@ -488,7 +515,7 @@ export function useSidebarResize({
 			const rail = dragRef.current;
 
 			if (pointerId !== null && rail?.hasPointerCapture(pointerId)) {
-				rail.releasePointerCapture(pointerId);
+				releasePointerCaptureSafe(rail, pointerId);
 			}
 
 			// Handle click (not drag) behavior
