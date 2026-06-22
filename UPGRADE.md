@@ -112,21 +112,33 @@ dependency or codemod work.
   - Desktop render, persisted width, dropdown animation, drag resize, and
     mobile Sheet animation pass.
   - Mobile Sheet title/description warnings remain scheduled for phase 3.
-- [ ] Commit with `chore: align low-risk dependencies`.
+- [x] Commit with `chore: align low-risk dependencies`.
 
 ## Phase 3: Port Official Sidebar Fixes Without Resize Changes
 
-- [ ] Add accessible mobile Sheet title and description.
-- [ ] Add upstream `data-slot` attributes while preserving existing
+- [x] Add accessible mobile Sheet title and description.
+- [x] Add upstream `data-slot` attributes while preserving existing
   `data-sidebar` attributes.
-- [ ] Change the sidebar trigger to `size-7` and `PanelLeftIcon`.
-- [ ] Port the upstream `SidebarMenuSubItem` wrapper.
-- [ ] Simplify `SidebarInset` to the upstream `w-full flex-1` shape after
+- [x] Change the sidebar trigger to `size-7` and `PanelLeftIcon`.
+- [x] Port the upstream `SidebarMenuSubItem` wrapper.
+- [x] Simplify `SidebarInset` to the upstream `w-full flex-1` shape after
   validating layout.
-- [ ] Keep current tooltip colors.
-- [ ] Only remove the custom `SidebarInput` focus ring if the current Input
+- [x] Keep current tooltip colors.
+- [x] Only remove the custom `SidebarInput` focus ring if the current Input
   primitive provides an equivalent focus-visible ring.
-- [ ] Re-run build and Agent Browser smoke checks.
+  - Verified `components/ui/input.tsx` provides `focus-visible:border-ring`,
+    `focus-visible:ring-ring/50`, and `focus-visible:ring-[3px]`.
+- [x] Re-run build and Agent Browser smoke checks.
+  - `bun run build` passes with the known baseline ESLint rule-load warning and
+    `metadataBase` warning.
+  - `bun run lint` still fails with the known baseline
+    `@typescript-eslint/no-unused-expressions` rule-load error.
+  - Desktop `data-slot` attributes were added while core `data-sidebar`
+    selectors remained present.
+  - Mobile Sheet now includes an sr-only title and description, and Radix
+    Dialog title/description console warnings are gone.
+  - Desktop keyboard toggle, drag resize, width cookie, and page console/errors
+    pass.
 - [ ] Commit with `refactor: align sidebar primitive fixes`.
 
 ## Phase 4: Radix Single-Package Migration
