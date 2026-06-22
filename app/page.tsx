@@ -59,11 +59,11 @@ export default function Home() {
 					</p>
 					<div className="flex flex-col gap-3">
 						<h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">
-							Drag the rail. Keep the Sidebar.
+							Drag. Click. Resize. Still shadcn/ui Sidebar.
 						</h1>
 						<p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-							A focused shadcn/ui Sidebar enhancement with resize, collapse,
-							persistence, and mobile behavior already wired in.
+							A drop-in enhancement that keeps the original Sidebar API,
+							composition, and customization model.
 						</p>
 					</div>
 					<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -78,6 +78,9 @@ export default function Home() {
 						</span>
 						<span className="rounded-md border bg-background px-2.5 py-1">
 							↻ Persists on reload
+						</span>
+						<span className="rounded-md border bg-background px-2.5 py-1">
+							⚡ Smooth drag
 						</span>
 					</div>
 				</div>
@@ -111,7 +114,7 @@ export default function Home() {
 							<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 								Philosophy
 							</p>
-							<h2 className="text-2xl font-semibold tracking-tight">
+							<h2 className="text-lg font-semibold tracking-tight">
 								Native Sidebar first.
 							</h2>
 							<p className="text-sm leading-6 text-muted-foreground">
@@ -157,7 +160,7 @@ export default function Home() {
 							<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
 								Specs
 							</p>
-							<h2 className="text-2xl font-semibold tracking-tight">
+							<h2 className="text-lg font-semibold tracking-tight">
 								Modern stack.
 							</h2>
 						</div>
