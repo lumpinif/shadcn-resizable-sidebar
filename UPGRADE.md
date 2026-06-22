@@ -161,10 +161,41 @@ dependency or codemod work.
   - Page console and page errors are empty after smoke.
 - [x] Commit with `chore: migrate radix primitives`.
 
+## Phase 5: Next.js 16
+
+- [x] Re-check current Next.js 16 documentation before changing code.
+  - Official upgrade docs list `bunx @next/codemod@canary upgrade latest`.
+  - `next lint` is removed in Next.js 16 and should be migrated to the ESLint
+    CLI.
+  - `unstable_cache` is replaced by `use cache` in Next.js 16 documentation, but
+    it is still documented as an API. This upgrade keeps the existing
+    `unstable_cache` call for GitHub stars rather than enabling
+    `cacheComponents`.
+- [x] Run the official upgrade codemod.
+  - Upgraded to Next.js `16.2.9`.
+  - Migrated `lint` from `next lint` to `eslint .`.
+  - Updated `eslint.config.mjs` to direct `eslint-config-next` flat config
+    imports.
+  - Updated React type packages to the codemod-selected React 19 versions.
+- [x] Fix lint issues exposed by the Next.js 16 ESLint migration.
+  - Replaced render-time `Math.random()` in `SidebarMenuSkeleton` with a
+    deterministic `useId()`-based width.
+  - Replaced `useIsMobile` effect state synchronization with
+    `useSyncExternalStore`.
+- [x] Set `turbopack.root` in `next.config.ts`.
+  - This removes the Next.js 16 workspace-root warning caused by an unrelated
+    `/Users/felix/package-lock.json` above the project.
+- [x] Re-run validation.
+  - `bun run lint` passes.
+  - `bun run build` passes on Next.js `16.2.9`; only the existing
+    `metadataBase` warning remains.
+  - Agent Browser smoke passes for desktop render, dropdown animation, drag
+    resize, width cookie, mobile Sheet animation, and mobile Sheet
+    accessibility.
+- [ ] Commit with `chore: upgrade to next 16`.
+
 ## Deferred Phases
 
-- Phase 5: Next.js 16, including the lint script migration and a fresh
-  documentation check for `unstable_cache`.
 - Phase 6: resize hook modernization after separate review.
 - Phase 7: TypeScript 6, ESLint 10, and `lucide-react` 1.x after the main
   upgrade is stable.
