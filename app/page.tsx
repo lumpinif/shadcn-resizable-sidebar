@@ -90,6 +90,9 @@ export default function Home() {
 							👈 Click rail
 						</span>
 						<span className="rounded-md border bg-background px-2.5 py-1">
+							← Auto collapse
+						</span>
+						<span className="rounded-md border bg-background px-2.5 py-1">
 							⌘B toggle
 						</span>
 						<span className="rounded-md border bg-background px-2.5 py-1">
