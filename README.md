@@ -1,182 +1,168 @@
-# A shadcn/ui Resizeable Sidebar
+# shadcn/ui Resizable Sidebar
 
-An extended shadcn-ui drag-to-resize `<Sidebar>` component for Next.js applications with persisted state, advanced resizing functionality, and VS Code-like behavior.
+A drop-in enhancement for the shadcn/ui `Sidebar`.
+
+It keeps the original Sidebar API, composition model, variants, and styling
+surface, then adds the product behavior most dashboards need: drag resize, rail
+click collapse, auto collapse, persisted width, and smooth pointer-driven drag.
 
 Demo: [shadcn-resize-sidebar.vercel.app](https://shadcn-resize-sidebar.vercel.app/)
 
 ## Features
 
-- 🕶️ Extended everything from shadcn-ui `<Sidebar>`
-- 🖱️ Drag to resize sidebar width
-- 🔄 Collapsible sidebar with smooth transitions
-- 🎨 Theme support (light/dark mode)
-- ⌨️ Keyboard shortcuts
-- 🍪 Persistent state with cookies
-- ✨ Advanced resizing capabilities:
-  - 🔍 VS Code-like continuous drag to collapse/expand
-  - 📏 Customizable auto-collapse threshold when resizing
-  - 🔄 Auto-expand when dragging in opposite direction
-  - 🎛️ Configurable minimum and maximum resize widths
-  - 🧭 Direction-aware resizing (left/right sidebar support)
+- Drag the rail to resize the sidebar.
+- Click the same rail to collapse or expand.
+- Use <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>B</kbd> to toggle.
+- Auto-collapse when the rail is dragged past the threshold.
+- Persist width and collapse state across reloads.
+- Restore state on the server with `sidebar:state` and `sidebar:width` cookies.
+- Keep the normal shadcn/ui Sidebar composition and customization model.
+- Use Pointer Events and pointer capture for mouse, pen, and touch input.
+- Write live width to `--sidebar-width` during drag, then commit React state and
+  cookies on release.
+- Keep the mobile Sidebar as an accessible Sheet with title and description.
 
-## Demo Stack
+## Stack
 
-- Next.js 15
-- React 19
-- Tailwind v4
+- Next.js `16.2.9`
+- React `19.2.7`
+- Tailwind CSS `4.3.1`
+- shadcn/ui `new-york` style
+- Radix UI single package `1.6.0`
+- Bun
 - TypeScript
-- shadcn/ui
 
 ## Getting Started
-
-1. Clone the repository:
 
 ```bash
 git clone https://github.com/lumpinif/shadcn-resizable-sidebar.git
 cd shadcn-resizable-sidebar
-```
-
-2. Install dependencies:
-
-```bash
 bun install
-```
-
-3. Run the development server:
-
-```bash
 bun dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) with your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Contributing
+## Steal the Code
 
-Pull requests are welcome.
+This is not a separate component system. Treat it as an enhanced shadcn/ui
+Sidebar fork.
 
-## Advanced Resizing Features
+The core files are:
 
-The sidebar component includes VS Code-like resizing behavior with the following capabilities:
+- `components/ui/sidebar.tsx`
+- `hooks/use-sidebar-resize.ts`
+- `components/providers/index.tsx`
 
-### Direction-Aware Resizing
+Use `components/providers/index.tsx` if you want the demo's server-side cookie
+restore behavior. Copy `app/globals.css` if you also want the same shadcn/ui
+neutral theme tokens.
 
-The sidebar supports both left and right-positioned panels. Set the rail direction to the side where the resize handle sits.
+## Basic Usage
 
 ```tsx
-// Left sidebar: the handle sits on the right edge.
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarProvider,
+  SidebarRail,
+} from "@/components/ui/sidebar"
+
+export function AppSidebar() {
+  return (
+    <SidebarProvider defaultWidth="16rem">
+      <Sidebar collapsible="icon">
+        <SidebarContent>{/* Your existing sidebar content */}</SidebarContent>
+        <SidebarRail />
+      </Sidebar>
+    </SidebarProvider>
+  )
+}
+```
+
+`SidebarRail` is the only new interaction surface users need to discover:
+
+- Drag it to resize.
+- Click it to collapse or expand.
+- Release after dragging to persist the new width.
+
+## Server-Side Restore
+
+The demo reads cookies in a server provider and passes the values into
+`SidebarProvider`.
+
+```tsx
+import { cookies } from "next/headers"
+import { SidebarProvider } from "@/components/ui/sidebar"
+
+const SIDEBAR_COOKIE_KEY = "sidebar"
+
+export async function Providers({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies()
+
+  const sidebarState = cookieStore.get(`${SIDEBAR_COOKIE_KEY}:state`)?.value
+  const sidebarWidth = cookieStore.get(`${SIDEBAR_COOKIE_KEY}:width`)?.value
+
+  return (
+    <SidebarProvider
+      cookieKey={SIDEBAR_COOKIE_KEY}
+      defaultOpen={sidebarState ? sidebarState === "true" : true}
+      defaultWidth={sidebarWidth}
+    >
+      {children}
+    </SidebarProvider>
+  )
+}
+```
+
+By default, the provider writes:
+
+- `sidebar:state`
+- `sidebar:width`
+
+Use a different `cookieKey` when a page needs multiple independent sidebars.
+
+## Resizing API
+
+`SidebarProvider` adds:
+
+| Prop | Purpose |
+| --- | --- |
+| `defaultWidth` | Initial sidebar width. The demo default is `16rem`. |
+| `cookieKey` | Prefix for persisted `state` and `width` cookies. |
+
+`SidebarRail` adds:
+
+| Prop | Purpose |
+| --- | --- |
+| `enableDrag` | Enables or disables drag resize. Defaults to `true`. |
+| `direction` | Set to `"right"` for a left sidebar, or `"left"` for a right sidebar. |
+
+The demo sidebar clamps width between `14rem` and `22rem`.
+
+```tsx
 <Sidebar side="left">
   <SidebarRail direction="right" />
 </Sidebar>
 
-// Right sidebar: the handle sits on the left edge.
 <Sidebar side="right">
   <SidebarRail direction="left" />
 </Sidebar>
 ```
 
-```typescript
-// For a left-positioned sidebar (default)
-const { dragRef, handleMouseDown } = useSidebarResize({
-  direction: "right", // Resize handle on right side
-  // other options...
-});
+`useSidebarResize` is available if you want to wire the resize behavior to a
+different panel, but most apps should use `SidebarProvider` and `SidebarRail`
+directly.
 
-// For a right-positioned sidebar
-const { dragRef, handleMouseDown } = useSidebarResize({
-  direction: "left", // Resize handle on left side
-  // other options...
-});
-```
+## Philosophy
 
-### Auto-Collapse and Auto-Expand
+Use the shadcn/ui Sidebar as the base. Keep its structure, slots, variants,
+tokens, and customization habits. Add resize as a thin product layer instead of
+replacing the component with a different sidebar system.
 
-The sidebar can automatically collapse when dragged below a certain threshold and expand when dragged in the opposite direction.
-
-```tsx
-// Example usage with custom thresholds
-<SidebarRail
-  direction="right" // Resize handle on the sidebar's right edge
-  enableDrag={true} // Enable drag functionality
-/>
-
-// In your SidebarProvider
-<SidebarProvider
-  defaultWidth="16rem" // Initial width
-  defaultOpen={true} // Initially expanded
-  cookieKey="sidebar" // Persists to sidebar:state and sidebar:width
-/>
-```
-
-### Cookie Scoping
-
-`SidebarProvider` uses `sidebar:state` and `sidebar:width` by default. Give each provider a unique `cookieKey` when multiple sidebars need independent persisted state.
-
-```tsx
-<SidebarProvider cookieKey="primary-sidebar">
-  <Sidebar side="left">
-    <SidebarRail direction="right" />
-  </Sidebar>
-</SidebarProvider>
-
-<SidebarProvider cookieKey="inspector-sidebar">
-  <Sidebar side="right">
-    <SidebarRail direction="left" />
-  </Sidebar>
-</SidebarProvider>
-```
-
-### Customization Options
-
-The `useSidebarResize` hook accepts several configuration options:
-
-```typescript
-const { dragRef, handleMouseDown } = useSidebarResize({
-  // Direction of resizing ("left" or "right")
-  direction: "right",
-
-  // Current width of the sidebar
-  currentWidth: width,
-
-  // Callback when width changes
-  onResize: setWidth,
-
-  // Callback when sidebar toggles between collapsed/expanded
-  onToggle: toggleSidebar,
-
-  // Whether sidebar is currently collapsed
-  isCollapsed: state === "collapsed",
-
-  // Minimum resize width (default: "14rem")
-  minResizeWidth: "14rem",
-
-  // Maximum resize width (default: "24rem")
-  maxResizeWidth: "22rem",
-
-  // Enable auto-collapse functionality (default: true)
-  enableAutoCollapse: true,
-
-  // Threshold for auto-collapse (default: 1.5)
-  // Values > 1.0: Collapse when dragged beyond minWidth by threshold amount
-  // Values <= 1.0: Collapse when width is below minWidth * threshold
-  autoCollapseThreshold: 1.5,
-
-  // Threshold for auto-expand when dragging in opposite direction (default: 0.2)
-  // Percentage of minWidth needed to drag to trigger expand
-  expandThreshold: 0.2,
-
-  // Enable drag functionality (default: true)
-  enableDrag: true,
-
-  // Callback to update dragging rail state
-  setIsDraggingRail: setIsDraggingRail,
-
-  // Cookie name for persisting width (default: undefined)
-  widthCookieName: "sidebar:width",
-
-  // Cookie max age in seconds (default: 1 week)
-  widthCookieMaxAge: 60 * 60 * 24 * 7,
-});
-```
+That means existing Sidebar customizations still work: menu groups, actions,
+variants, inset layout, floating layout, icon collapse, keyboard toggle, mobile
+Sheet behavior, and semantic Tailwind tokens.
 
 ## License
 
