@@ -1,3 +1,9 @@
+import { Button } from "@/components/ui/button";
+import { RiGithubFill } from "@remixicon/react";
+
+const GITHUB_REPOSITORY_URL =
+	"https://github.com/lumpinif/drag-to-resize-sidebar";
+
 const actionCards = [
 	{
 		kicker: "Drag",
@@ -66,6 +72,16 @@ export default function Home() {
 							composition, and customization model.
 						</p>
 					</div>
+					<Button asChild className="w-fit">
+						<a
+							href={GITHUB_REPOSITORY_URL}
+							target="_blank"
+							rel="noreferrer"
+						>
+							<RiGithubFill data-icon="inline-start" aria-hidden="true" />
+							Steal the code
+						</a>
+					</Button>
 					<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
 						<span className="rounded-md border bg-background px-2.5 py-1">
 							↔ Drag rail
