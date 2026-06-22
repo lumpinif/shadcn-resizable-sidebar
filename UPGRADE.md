@@ -73,12 +73,22 @@ dependency or codemod work.
 
 ## Phase 1: Minimal Real Fixes
 
-- [ ] Fix the sidebar token alias in `app/globals.css`.
-- [ ] Fix `transition-[margin,opa]` to use `opacity`.
-- [ ] Remove invalid `hsl()` wrapping around sidebar OKLCH tokens.
-- [ ] Add `tw-animate-css` and import it after `@import "tailwindcss";`.
-- [ ] Remove unused `@radix-ui/react-icons`.
-- [ ] Re-run build and Agent Browser smoke checks.
+- [x] Fix the sidebar token alias in `app/globals.css`.
+- [x] Fix `transition-[margin,opa]` to use `opacity`.
+- [x] Remove invalid `hsl()` wrapping around sidebar OKLCH tokens.
+- [x] Add `tw-animate-css` and import it after `@import "tailwindcss";`.
+- [x] Remove unused `@radix-ui/react-icons`.
+- [x] Re-run build and Agent Browser smoke checks.
+  - `bun run build` still exits 0 with the known baseline ESLint rule-load
+    warning and `metadataBase` warning.
+  - `bun run lint` still fails with the known baseline
+    `@typescript-eslint/no-unused-expressions` rule-load error.
+  - Dropdown, tooltip, and mobile Sheet animations now compute real `enter`
+    animations instead of `none` / `0s`.
+  - Desktop collapse, keyboard shortcut, drag resize, and width cookie behavior
+    still pass.
+  - Mobile Sheet still reports missing title/description warnings; this remains
+    scheduled for phase 3.
 - [ ] Commit with `fix: repair sidebar tokens and animations`.
 
 ## Phase 2: Low-Risk Dependency Alignment
