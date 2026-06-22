@@ -8,12 +8,14 @@ type ProviderProps = {
 	children: React.ReactNode;
 };
 
+const SIDEBAR_COOKIE_KEY = "sidebar";
+
 export async function Providers({ children }: ProviderProps) {
 	const cookieStore = await cookies();
 
-	const sidebarState = cookieStore.get("sidebar:state")?.value;
+	const sidebarState = cookieStore.get(`${SIDEBAR_COOKIE_KEY}:state`)?.value;
 	//* get sidebar width from cookie
-	const sidebarWidth = cookieStore.get("sidebar:width")?.value;
+	const sidebarWidth = cookieStore.get(`${SIDEBAR_COOKIE_KEY}:width`)?.value;
 
 	let defaultOpen = true;
 
@@ -28,7 +30,11 @@ export async function Providers({ children }: ProviderProps) {
 			defaultTheme="dark"
 			disableTransitionOnChange
 		>
-			<SidebarProvider defaultOpen={defaultOpen} defaultWidth={sidebarWidth}>
+			<SidebarProvider
+				cookieKey={SIDEBAR_COOKIE_KEY}
+				defaultOpen={defaultOpen}
+				defaultWidth={sidebarWidth}
+			>
 				<AppSidebar>
 					<AppSidebarInset>{children}</AppSidebarInset>
 				</AppSidebar>

@@ -27,7 +27,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebarResize } from "@/hooks/use-sidebar-resize";
 import { cn } from "@/lib/utils";
 
-const SIDEBAR_COOKIE_NAME = "sidebar:state";
+const SIDEBAR_COOKIE_KEY = "sidebar";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
@@ -37,6 +37,13 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 //* new constants for sidebar resizing
 const MIN_SIDEBAR_WIDTH = "14rem";
 const MAX_SIDEBAR_WIDTH = "22rem";
+
+type SidebarResizeDirection = "left" | "right";
+type SidebarCookieKind = "state" | "width";
+
+function getSidebarCookieName(cookieKey: string, kind: SidebarCookieKind) {
+	return `${cookieKey}:${kind}`;
+}
 
 function parseSidebarWidth(
 	width: string | undefined,
@@ -98,6 +105,7 @@ type SidebarContext = {
 	isDraggingRail: boolean;
 	setIsDraggingRail: (isDraggingRail: boolean) => void;
 	sidebarWrapperRef: React.RefObject<HTMLDivElement | null>;
+	widthCookieName: string;
 };
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
@@ -119,6 +127,7 @@ const SidebarProvider = React.forwardRef<
 		onOpenChange?: (open: boolean) => void;
 		//* new prop for default width
 		defaultWidth?: string;
+		cookieKey?: string;
 	}
 >(
 	(
@@ -130,6 +139,7 @@ const SidebarProvider = React.forwardRef<
 			style,
 			children,
 			defaultWidth = SIDEBAR_WIDTH,
+			cookieKey = SIDEBAR_COOKIE_KEY,
 			...props
 		},
 		ref,
@@ -137,6 +147,8 @@ const SidebarProvider = React.forwardRef<
 		const isMobile = useIsMobile();
 		const sidebarWrapperRef = React.useRef<HTMLDivElement>(null);
 		const composedRef = useComposedRefs(ref, sidebarWrapperRef);
+		const stateCookieName = getSidebarCookieName(cookieKey, "state");
+		const widthCookieName = getSidebarCookieName(cookieKey, "width");
 		//* new state for sidebar width
 		const [width, setWidth] = React.useState(() =>
 			clampSidebarWidth(defaultWidth),
@@ -159,9 +171,9 @@ const SidebarProvider = React.forwardRef<
 				}
 
 				// This sets the cookie to keep the sidebar state.
-				document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+				document.cookie = `${stateCookieName}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 			},
-			[setOpenProp, open],
+			[setOpenProp, open, stateCookieName],
 		);
 
 		// Helper to toggle the sidebar.
@@ -212,6 +224,7 @@ const SidebarProvider = React.forwardRef<
 				isDraggingRail,
 				setIsDraggingRail,
 				sidebarWrapperRef,
+				widthCookieName,
 			}),
 			[
 				state,
@@ -227,6 +240,7 @@ const SidebarProvider = React.forwardRef<
 				//* add isDraggingRail to dependencies
 				isDraggingRail,
 				sidebarWrapperRef,
+				widthCookieName,
 			],
 		);
 
@@ -417,8 +431,9 @@ const SidebarRail = React.forwardRef<
 	React.ComponentProps<"button"> & {
 		//* new prop for enabling drag
 		enableDrag?: boolean;
+		direction?: SidebarResizeDirection;
 	}
->(({ className, enableDrag = true, ...props }, ref) => {
+>(({ className, enableDrag = true, direction = "right", ...props }, ref) => {
 	const {
 		toggleSidebar,
 		setWidth,
@@ -426,10 +441,11 @@ const SidebarRail = React.forwardRef<
 		width,
 		setIsDraggingRail,
 		sidebarWrapperRef,
+		widthCookieName,
 	} = useSidebar();
 
 	const { dragRef, handlePointerDown } = useSidebarResize({
-		direction: "right",
+		direction,
 		enableDrag,
 		onResize: setWidth,
 		onToggle: toggleSidebar,
@@ -438,7 +454,7 @@ const SidebarRail = React.forwardRef<
 		minResizeWidth: MIN_SIDEBAR_WIDTH,
 		maxResizeWidth: MAX_SIDEBAR_WIDTH,
 		setIsDraggingRail,
-		widthCookieName: "sidebar:width",
+		widthCookieName,
 		widthCookieMaxAge: 60 * 60 * 24 * 7, // 1 week
 		resizeRootRef: sidebarWrapperRef,
 	});
@@ -450,6 +466,7 @@ const SidebarRail = React.forwardRef<
 			ref={combinedRef}
 			data-sidebar="rail"
 			data-slot="sidebar-rail"
+			data-resize-direction={direction}
 			aria-label="Toggle Sidebar"
 			tabIndex={-1}
 			// onClick={toggleSidebar}

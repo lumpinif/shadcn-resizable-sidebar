@@ -60,7 +60,19 @@ The sidebar component includes VS Code-like resizing behavior with the following
 
 ### Direction-Aware Resizing
 
-The sidebar component supports both left and right-positioned sidebars with appropriate resizing behavior. The resize handle automatically adjusts its behavior based on the sidebar's position.
+The sidebar supports both left and right-positioned panels. Set the rail direction to the side where the resize handle sits.
+
+```tsx
+// Left sidebar: the handle sits on the right edge.
+<Sidebar side="left">
+  <SidebarRail direction="right" />
+</Sidebar>
+
+// Right sidebar: the handle sits on the left edge.
+<Sidebar side="right">
+  <SidebarRail direction="left" />
+</Sidebar>
+```
 
 ```typescript
 // For a left-positioned sidebar (default)
@@ -83,6 +95,7 @@ The sidebar can automatically collapse when dragged below a certain threshold an
 ```tsx
 // Example usage with custom thresholds
 <SidebarRail
+  direction="right" // Resize handle on the sidebar's right edge
   enableDrag={true} // Enable drag functionality
 />
 
@@ -90,7 +103,26 @@ The sidebar can automatically collapse when dragged below a certain threshold an
 <SidebarProvider
   defaultWidth="16rem" // Initial width
   defaultOpen={true} // Initially expanded
+  cookieKey="sidebar" // Persists to sidebar:state and sidebar:width
 />
+```
+
+### Cookie Scoping
+
+`SidebarProvider` uses `sidebar:state` and `sidebar:width` by default. Give each provider a unique `cookieKey` when multiple sidebars need independent persisted state.
+
+```tsx
+<SidebarProvider cookieKey="primary-sidebar">
+  <Sidebar side="left">
+    <SidebarRail direction="right" />
+  </Sidebar>
+</SidebarProvider>
+
+<SidebarProvider cookieKey="inspector-sidebar">
+  <Sidebar side="right">
+    <SidebarRail direction="left" />
+  </Sidebar>
+</SidebarProvider>
 ```
 
 ### Customization Options
