@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
 	title: "shadcn-resizable-sidebar",
-	description: "Drag-to-Resize Sidebar built with shadcn-ui",
+	description: "Drag-to-resize Sidebar built with shadcn/ui.",
+	metadataBase: new URL("https://shadcn-resize-sidebar.vercel.app"),
 };
 
 export default function RootLayout({

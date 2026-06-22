@@ -57,7 +57,7 @@ export default async function Socials() {
 						}),
 					)}
 				>
-					{stars} Stars on Github
+					{stars} ⭐ on Github
 				</Link>
 				<Link
 					target="_blank"

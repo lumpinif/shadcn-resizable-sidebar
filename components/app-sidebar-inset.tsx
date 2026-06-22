@@ -1,6 +1,7 @@
 import { SidebarInset } from "./ui/sidebar";
 
 import Socials from "@/components/socials";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -15,9 +16,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function AppSidebarInset({ children }: { children: React.ReactNode }) {
 	return (
-		<SidebarInset className="overflow-x-hidden">
-			<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 justify-between">
-				<div className="flex items-center gap-2 px-4">
+		<SidebarInset className="h-svh overflow-hidden">
+			<header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+				<div className="flex min-w-0 items-center gap-2">
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<SidebarTrigger className="-ml-1" />
@@ -31,26 +32,27 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
 						<BreadcrumbList>
 							<BreadcrumbItem className="hidden md:block">
 								<BreadcrumbLink href="#">
-									A shadcn/ui Resizeable Sidebar
+									shadcn/ui Resizable Sidebar
 								</BreadcrumbLink>
 							</BreadcrumbItem>
 							<BreadcrumbSeparator className="hidden md:block" />
 							<BreadcrumbItem>
 								<BreadcrumbPage className="block md:hidden">
-									Sidebar is only resizable on desktop
+									Resizable on desktop
 								</BreadcrumbPage>
 								<BreadcrumbPage className="hidden md:block">
-									Try to drag the sidebar
+									Drag or click the rail
 								</BreadcrumbPage>
 							</BreadcrumbItem>
 						</BreadcrumbList>
 					</Breadcrumb>
 				</div>
-				<div className="mr-2 sm:mr-4">
+				<div className="flex shrink-0 items-center gap-2">
+					<ThemeSwitcher />
 					<Socials />
 				</div>
 			</header>
-			{children}
+			<div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
 		</SidebarInset>
 	);
 }
