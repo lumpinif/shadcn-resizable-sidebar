@@ -1,6 +1,7 @@
 "use client";
 
 import { Slot as SlotPrimitive } from "radix-ui";
+import { useComposedRefs } from "radix-ui/internal";
 import { type VariantProps, cva } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
@@ -24,7 +25,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebarResize } from "@/hooks/use-sidebar-resize";
-import { mergeButtonRefs } from "@/lib/merge-button-refs";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
@@ -37,6 +37,51 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 //* new constants for sidebar resizing
 const MIN_SIDEBAR_WIDTH = "14rem";
 const MAX_SIDEBAR_WIDTH = "22rem";
+
+function parseSidebarWidth(
+	width: string | undefined,
+): { px: number; unit: "rem" | "px" } | null {
+	if (!width) {
+		return null;
+	}
+
+	const value = Number.parseFloat(width);
+
+	if (!Number.isFinite(value)) {
+		return null;
+	}
+
+	const unit: "rem" | "px" = width.endsWith("rem") ? "rem" : "px";
+	const px = unit === "rem" ? value * 16 : value;
+
+	return { px, unit };
+}
+
+function formatSidebarWidth(px: number, unit: "rem" | "px") {
+	if (unit === "px") {
+		return `${Math.round(px)}px`;
+	}
+
+	return `${Number((px / 16).toFixed(1))}rem`;
+}
+
+function clampSidebarWidth(width: string | undefined) {
+	const parsedWidth =
+		parseSidebarWidth(width) ?? parseSidebarWidth(SIDEBAR_WIDTH);
+	const minWidth = parseSidebarWidth(MIN_SIDEBAR_WIDTH);
+	const maxWidth = parseSidebarWidth(MAX_SIDEBAR_WIDTH);
+
+	if (!parsedWidth || !minWidth || !maxWidth) {
+		throw new Error("Sidebar width constants must be valid rem or px values.");
+	}
+
+	const clampedPx = Math.max(
+		minWidth.px,
+		Math.min(maxWidth.px, parsedWidth.px),
+	);
+
+	return formatSidebarWidth(clampedPx, parsedWidth.unit);
+}
 
 type SidebarContext = {
 	state: "expanded" | "collapsed";
@@ -52,6 +97,7 @@ type SidebarContext = {
 	//* new properties for tracking is dragging rail
 	isDraggingRail: boolean;
 	setIsDraggingRail: (isDraggingRail: boolean) => void;
+	sidebarWrapperRef: React.RefObject<HTMLDivElement | null>;
 };
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
@@ -89,8 +135,12 @@ const SidebarProvider = React.forwardRef<
 		ref,
 	) => {
 		const isMobile = useIsMobile();
+		const sidebarWrapperRef = React.useRef<HTMLDivElement>(null);
+		const composedRef = useComposedRefs(ref, sidebarWrapperRef);
 		//* new state for sidebar width
-		const [width, setWidth] = React.useState(defaultWidth);
+		const [width, setWidth] = React.useState(() =>
+			clampSidebarWidth(defaultWidth),
+		);
 		const [openMobile, setOpenMobile] = React.useState(false);
 		//* new state for tracking is dragging rail
 		const [isDraggingRail, setIsDraggingRail] = React.useState(false);
@@ -161,6 +211,7 @@ const SidebarProvider = React.forwardRef<
 				//* new context for tracking is dragging rail
 				isDraggingRail,
 				setIsDraggingRail,
+				sidebarWrapperRef,
 			}),
 			[
 				state,
@@ -175,6 +226,7 @@ const SidebarProvider = React.forwardRef<
 				width,
 				//* add isDraggingRail to dependencies
 				isDraggingRail,
+				sidebarWrapperRef,
 			],
 		);
 
@@ -195,7 +247,7 @@ const SidebarProvider = React.forwardRef<
 							"group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
 							className,
 						)}
-						ref={ref}
+						ref={composedRef}
 						{...props}
 					>
 						{children}
@@ -367,10 +419,16 @@ const SidebarRail = React.forwardRef<
 		enableDrag?: boolean;
 	}
 >(({ className, enableDrag = true, ...props }, ref) => {
-	const { toggleSidebar, setWidth, state, width, setIsDraggingRail } =
-		useSidebar();
+	const {
+		toggleSidebar,
+		setWidth,
+		state,
+		width,
+		setIsDraggingRail,
+		sidebarWrapperRef,
+	} = useSidebar();
 
-	const { dragRef, handleMouseDown } = useSidebarResize({
+	const { dragRef, handlePointerDown } = useSidebarResize({
 		direction: "right",
 		enableDrag,
 		onResize: setWidth,
@@ -382,28 +440,23 @@ const SidebarRail = React.forwardRef<
 		setIsDraggingRail,
 		widthCookieName: "sidebar:width",
 		widthCookieMaxAge: 60 * 60 * 24 * 7, // 1 week
+		resizeRootRef: sidebarWrapperRef,
 	});
 
-	//* Merge external ref with our dragRef
-	const combinedRef = React.useMemo(
-		() => mergeButtonRefs([ref, dragRef]),
-		[ref, dragRef],
-	);
+	const combinedRef = useComposedRefs(ref, dragRef);
 
 	return (
 		<button
-			//* updated ref to use combinedRef
 			ref={combinedRef}
 			data-sidebar="rail"
 			data-slot="sidebar-rail"
 			aria-label="Toggle Sidebar"
 			tabIndex={-1}
 			// onClick={toggleSidebar}
-			//* replace onClick with onMouseDown
-			onMouseDown={handleMouseDown}
+			onPointerDown={handlePointerDown}
 			title="Toggle Sidebar"
 			className={cn(
-				"absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
+				"absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 touch-none select-none transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
 				"in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
 				"[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
 				"group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",

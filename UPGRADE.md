@@ -1,6 +1,6 @@
 # Upgrade Roadmap
 
-This project is a Bun-managed Next.js 15 + React 19 + Tailwind v4 shadcn/ui app
+This project is a Bun-managed Next.js 16 + React 19 + Tailwind v4 shadcn/ui app
 with a local fork of the official sidebar. The fork adds drag-to-resize behavior,
 so sidebar changes must be reviewed manually and kept separate from broad
 dependency or codemod work.
@@ -192,10 +192,50 @@ dependency or codemod work.
   - Agent Browser smoke passes for desktop render, dropdown animation, drag
     resize, width cookie, mobile Sheet animation, and mobile Sheet
     accessibility.
-- [ ] Commit with `chore: upgrade to next 16`.
+- [x] Commit with `chore: upgrade to next 16`.
+
+## Phase 6: Resize Hook Modernization
+
+- [x] Keep the existing public resize behavior.
+  - `defaultWidth`, `width`, `setWidth`, `isDraggingRail`,
+    `setIsDraggingRail`, `SidebarRail`, `enableDrag`, `useSidebarResize`,
+    `sidebar:state`, `sidebar:width`, `data-dragging`, `duration-0`,
+    `MIN_SIDEBAR_WIDTH`, and `MAX_SIDEBAR_WIDTH` remain in place.
+- [x] Move the drag hot path out of React context state.
+  - During drag, `useSidebarResize` writes `--sidebar-width` directly to the
+    sidebar wrapper element.
+  - React state and `sidebar:width` cookie are committed on pointerup instead
+    of every pointermove.
+  - The hook keeps a backward-compatible `handleMouseDown` return value for
+    external consumers, while `SidebarRail` now uses `onPointerDown`.
+- [x] Switch the project path to Pointer Events.
+  - `SidebarRail` uses `onPointerDown`.
+  - The hook uses pointer id tracking, `setPointerCapture`, pointer cancel
+    handling, and temporary `body.style.userSelect = "none"` during drag.
+- [x] Use modern ref composition.
+  - Replaced `mergeButtonRefs` with Radix `useComposedRefs`.
+  - Deleted `lib/merge-button-refs.ts`.
+- [x] Remove dead resize refs.
+  - Removed the unused `lastWidth`, `lastLoggedWidth`, `dragOffset`,
+    `lastToggleWidth`, and `dragStartPoint` bookkeeping.
+- [x] Clamp seeded widths before storing them in React state.
+  - Cookie-provided `defaultWidth` is clamped to the 14rem-22rem sidebar
+    bounds before it becomes provider state.
+- [x] Re-run validation.
+  - `bun run lint` passes.
+  - `bun run build` passes on Next.js `16.2.9`; only the existing
+    `metadataBase` warning remains.
+  - Agent Browser smoke passes for desktop drag resize, drag-time DOM width
+    updates, pointerup cookie commit, max-width clamp, reload persistence,
+    click collapse, keyboard expand, drag-to-collapse, drag-to-expand, mobile
+    Sheet animation, and mobile Sheet accessibility.
+  - Focused React render recording across a continuous drag showed
+    `SidebarProvider` re-rendered twice rather than once per pointer move.
+  - Screenshots were captured under
+    `/tmp/shadcn-resizable-sidebar-upgrade/phase6/`.
+- [x] Commit with `refactor: modernize sidebar resize handling`.
 
 ## Deferred Phases
 
-- Phase 6: resize hook modernization after separate review.
 - Phase 7: TypeScript 6, ESLint 10, and `lucide-react` 1.x after the main
   upgrade is stable.

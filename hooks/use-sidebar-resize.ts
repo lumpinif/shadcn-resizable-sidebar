@@ -87,6 +87,13 @@ export interface UseSidebarResizeProps {
 	 * Whether to enable toggle functionality
 	 */
 	enableToggle?: boolean;
+
+	/**
+	 * Root element that owns the --sidebar-width custom property.
+	 * During drag, the hook writes to this element directly and commits React state
+	 * only after pointerup.
+	 */
+	resizeRootRef?: React.RefObject<HTMLElement | null>;
 }
 
 interface WidthUnit {
@@ -140,6 +147,7 @@ export function useSidebarResize({
 	widthCookieName,
 	widthCookieMaxAge = 60 * 60 * 24 * 7, // 1 week default
 	isNested = false,
+	resizeRootRef,
 }: UseSidebarResizeProps) {
 	// Refs for tracking drag state
 	const dragRef = React.useRef<HTMLButtonElement>(null);
@@ -147,20 +155,15 @@ export function useSidebarResize({
 	const startX = React.useRef(0);
 	const isDragging = React.useRef(false);
 	const isInteractingWithRail = React.useRef(false);
-	const lastWidth = React.useRef(0);
-	const lastLoggedWidth = React.useRef(0);
-	const dragStartPoint = React.useRef(0);
+	const activePointerId = React.useRef<number | null>(null);
+	const pendingWidth = React.useRef<string | null>(null);
 	const lastDragDirection = React.useRef<"expand" | "collapse" | null>(null);
 	const lastTogglePoint = React.useRef(0);
-	const lastToggleWidth = React.useRef(0);
 	const toggleCooldown = React.useRef(false);
 	const lastToggleTime = React.useRef(0);
 	const dragDistanceFromToggle = React.useRef(0);
-	const dragOffset = React.useRef(0);
 	const railRect = React.useRef<DOMRect | null>(null);
-
-	// Refs for auto-collapse threshold
-	const autoCollapseThresholdPx = React.useRef(0);
+	const previousBodyUserSelect = React.useRef<string | null>(null);
 
 	// Memoize min/max width calculations for performance
 	const minWidthPx = React.useMemo(
@@ -172,7 +175,7 @@ export function useSidebarResize({
 		[maxResizeWidth],
 	);
 
-	// Helper function to determine if width is increasing based on direction and mouse movement
+	// Helper function to determine if width is increasing based on direction and pointer movement
 	const isIncreasingWidth = React.useCallback(
 		(currentX: number, referenceX: number): boolean => {
 			return direction === "left"
@@ -182,44 +185,37 @@ export function useSidebarResize({
 		[direction],
 	);
 
-	// Helper function to calculate width based on mouse position and direction
+	// Helper function to calculate width based on pointer position and direction
 	const calculateWidth = React.useCallback(
 		(
-			e: MouseEvent,
+			currentX: number,
 			initialX: number,
 			initialWidth: number,
 			currentRailRect: DOMRect | null,
 		): number => {
 			if (isNested && currentRailRect) {
 				// For nested sidebars, use the delta from start position for precise tracking
-				const deltaX = e.clientX - initialX;
+				const deltaX = currentX - initialX;
 
 				if (direction === "left") {
 					// For left-positioned handle (right panel)
-					// Width increases as mouse moves left (negative deltaX)
+					// Width increases as pointer moves left (negative deltaX)
 					return initialWidth - deltaX;
 				}
 				// For right-positioned handle (left panel)
-				// Width increases as mouse moves right (positive deltaX)
+				// Width increases as pointer moves right (positive deltaX)
 				return initialWidth + deltaX;
 			}
 			// For standard sidebars at window edges
 			if (direction === "left") {
 				// For left-positioned handle (right panel)
-				return window.innerWidth - e.clientX;
+				return window.innerWidth - currentX;
 			}
 			// For right-positioned handle (left panel)
-			return e.clientX;
+			return currentX;
 		},
 		[direction, isNested],
 	);
-
-	// Update auto-collapse threshold when dependencies change
-	React.useEffect(() => {
-		autoCollapseThresholdPx.current = enableAutoCollapse
-			? minWidthPx * autoCollapseThreshold
-			: 0;
-	}, [minWidthPx, enableAutoCollapse, autoCollapseThreshold]);
 
 	// Persist width to cookie if cookie name is provided
 	const persistWidth = React.useCallback(
@@ -231,10 +227,41 @@ export function useSidebarResize({
 		[widthCookieName, widthCookieMaxAge],
 	);
 
-	// Handle mouse down on resize handle
-	const handleMouseDown = React.useCallback(
-		(e: React.MouseEvent) => {
+	const writeResizeRootWidth = React.useCallback(
+		(width: string): boolean => {
+			const resizeRoot = resizeRootRef?.current;
+
+			if (!resizeRoot) {
+				return false;
+			}
+
+			resizeRoot.style.setProperty("--sidebar-width", width);
+			return true;
+		},
+		[resizeRootRef],
+	);
+
+	const restoreBodyUserSelect = React.useCallback(() => {
+		if (previousBodyUserSelect.current === null) {
+			return;
+		}
+
+		document.body.style.userSelect = previousBodyUserSelect.current;
+		previousBodyUserSelect.current = null;
+	}, []);
+
+	const beginInteraction = React.useCallback(
+		(
+			clientX: number,
+			pointerId: number | null,
+			target: HTMLButtonElement,
+		) => {
 			isInteractingWithRail.current = true;
+			activePointerId.current = pointerId;
+
+			if (pointerId !== null) {
+				target.setPointerCapture(pointerId);
+			}
 
 			if (!enableDrag) {
 				return;
@@ -243,19 +270,16 @@ export function useSidebarResize({
 			// Store initial state
 			const currentWidthPx = isCollapsed ? 0 : toPx(currentWidth);
 			startWidth.current = currentWidthPx;
-			startX.current = e.clientX;
-			dragStartPoint.current = e.clientX;
-			lastWidth.current = currentWidthPx;
-			lastLoggedWidth.current = currentWidthPx;
-			lastTogglePoint.current = e.clientX;
-			lastToggleWidth.current = currentWidthPx;
+			startX.current = clientX;
+			lastTogglePoint.current = clientX;
 			lastDragDirection.current = null;
 			toggleCooldown.current = false;
 			lastToggleTime.current = 0;
 			dragDistanceFromToggle.current = 0;
+			pendingWidth.current = null;
 
-			// Reset drag offset
-			dragOffset.current = 0;
+			previousBodyUserSelect.current = document.body.style.userSelect;
+			document.body.style.userSelect = "none";
 
 			// Store the rail element's position for nested sidebars
 			if (isNested && dragRef.current) {
@@ -263,223 +287,276 @@ export function useSidebarResize({
 			} else {
 				railRect.current = null;
 			}
-
-			e.preventDefault();
 		},
 		[enableDrag, isCollapsed, currentWidth, isNested],
 	);
 
-	// Handle mouse movement and resizing
-	React.useEffect(() => {
-		const handleMouseMove = (e: MouseEvent) => {
-			if (!isInteractingWithRail.current) return;
+	const handlePointerDown = React.useCallback(
+		(e: React.PointerEvent<HTMLButtonElement>) => {
+			beginInteraction(e.clientX, e.pointerId, e.currentTarget);
+			e.preventDefault();
+		},
+		[beginInteraction],
+	);
 
-			const deltaX = Math.abs(e.clientX - startX.current);
+	// Backward-compatible handler for consumers still wiring the hook to onMouseDown.
+	const handleMouseDown = React.useCallback(
+		(e: React.MouseEvent<HTMLButtonElement>) => {
+			beginInteraction(e.clientX, null, e.currentTarget);
+			e.preventDefault();
+		},
+		[beginInteraction],
+	);
+
+	const handleDragMove = React.useEffectEvent(
+		(clientX: number, pointerId: number | null) => {
+			if (!isInteractingWithRail.current || !enableDrag) return;
+
+			if (activePointerId.current !== pointerId) {
+				return;
+			}
+
+			const deltaX = Math.abs(clientX - startX.current);
+			let startedDragging = false;
+
 			if (!isDragging.current && deltaX > 5) {
 				isDragging.current = true;
+				startedDragging = true;
 				setIsDraggingRail(true);
 			}
 
-			if (isDragging.current) {
-				// Get unit for width calculations
-				const { unit } = parseWidth(currentWidth);
+			if (!isDragging.current) {
+				return;
+			}
 
-				// Get current rail position for ultra-precise tracking
-				let currentRailRect = railRect.current;
-				if (isNested && dragRef.current) {
-					currentRailRect = dragRef.current.getBoundingClientRect();
-				}
+			// Get unit for width calculations
+			const { unit } = parseWidth(currentWidth);
 
-				// Determine current drag direction
-				const currentDragDirection = isIncreasingWidth(
-					e.clientX,
-					lastTogglePoint.current,
-				)
-					? "expand"
-					: "collapse";
+			// Get current rail position for ultra-precise tracking
+			let currentRailRect = railRect.current;
+			if (isNested && dragRef.current) {
+				currentRailRect = dragRef.current.getBoundingClientRect();
+			}
 
-				// Update direction tracking
-				if (lastDragDirection.current !== currentDragDirection) {
-					lastDragDirection.current = currentDragDirection;
-				}
+			// Determine current drag direction
+			const currentDragDirection = isIncreasingWidth(
+				clientX,
+				lastTogglePoint.current,
+			)
+				? "expand"
+				: "collapse";
 
-				// Calculate distance from last toggle point
-				dragDistanceFromToggle.current = Math.abs(
-					e.clientX - lastTogglePoint.current,
-				);
+			// Update direction tracking
+			if (lastDragDirection.current !== currentDragDirection) {
+				lastDragDirection.current = currentDragDirection;
+			}
 
-				// Check for toggle cooldown (prevent rapid toggling)
-				const now = Date.now();
-				if (toggleCooldown.current && now - lastToggleTime.current > 200) {
-					toggleCooldown.current = false;
-				}
+			// Calculate distance from last toggle point
+			dragDistanceFromToggle.current = Math.abs(
+				clientX - lastTogglePoint.current,
+			);
 
-				// Handle toggling between collapsed and expanded states
-				if (!toggleCooldown.current) {
-					// Handle collapsing when expanded
-					if (enableAutoCollapse && onToggle && !isCollapsed) {
-						// Calculate precise width based on mouse position
-						const currentDragWidth = calculateWidth(
-							e,
-							startX.current,
-							startWidth.current,
-							currentRailRect,
-						);
+			// Check for toggle cooldown (prevent rapid toggling)
+			const now = Date.now();
+			if (toggleCooldown.current && now - lastToggleTime.current > 200) {
+				toggleCooldown.current = false;
+			}
 
-						// Determine if we should collapse based on threshold
-						let shouldCollapse = false;
+			// Handle toggling between collapsed and expanded states
+			if (!toggleCooldown.current) {
+				// Handle collapsing when expanded
+				if (enableAutoCollapse && onToggle && !isCollapsed) {
+					// Calculate precise width based on pointer position
+					const currentDragWidth = calculateWidth(
+						clientX,
+						startX.current,
+						startWidth.current,
+						currentRailRect,
+					);
 
-						if (autoCollapseThreshold <= 1.0) {
-							// For thresholds <= 1.0, collapse when width is below minWidth * threshold
-							shouldCollapse =
-								currentDragWidth <= minWidthPx * autoCollapseThreshold;
-						} else {
-							// For thresholds > 1.0, we need to drag beyond minWidth by a certain amount
-							if (currentDragWidth <= minWidthPx) {
-								// Calculate how much beyond minWidth we need to drag
-								const extraDragNeeded =
-									minWidthPx * (autoCollapseThreshold - 1.0);
+					// Determine if we should collapse based on threshold
+					let shouldCollapse = false;
 
-								// Only collapse if we've dragged far enough beyond minWidth
-								const distanceBeyondMin = minWidthPx - currentDragWidth;
+					if (autoCollapseThreshold <= 1.0) {
+						// For thresholds <= 1.0, collapse when width is below minWidth * threshold
+						shouldCollapse =
+							currentDragWidth <= minWidthPx * autoCollapseThreshold;
+					} else {
+						// For thresholds > 1.0, we need to drag beyond minWidth by a certain amount
+						if (currentDragWidth <= minWidthPx) {
+							// Calculate how much beyond minWidth we need to drag
+							const extraDragNeeded =
+								minWidthPx * (autoCollapseThreshold - 1.0);
 
-								shouldCollapse = distanceBeyondMin >= extraDragNeeded;
-							}
-						}
+							// Only collapse if we've dragged far enough beyond minWidth
+							const distanceBeyondMin = minWidthPx - currentDragWidth;
 
-						if (currentDragDirection === "collapse" && shouldCollapse) {
-							onToggle(); // Collapse
-							lastTogglePoint.current = e.clientX;
-							lastToggleWidth.current = 0; // Width is 0 when collapsed
-							toggleCooldown.current = true;
-							lastToggleTime.current = now;
-							return;
+							shouldCollapse = distanceBeyondMin >= extraDragNeeded;
 						}
 					}
 
-					// Handle expanding when collapsed
-					if (
-						onToggle &&
-						isCollapsed &&
-						currentDragDirection === "expand" &&
-						dragDistanceFromToggle.current > minWidthPx * expandThreshold
-					) {
-						onToggle(); // Expand
-
-						// Calculate initial width based on exact mouse position
-						const initialWidth = calculateWidth(
-							e,
-							startX.current,
-							startWidth.current,
-							currentRailRect,
-						);
-
-						// Clamp to min/max
-						const clampedWidth = Math.max(
-							minWidthPx,
-							Math.min(maxWidthPx, initialWidth),
-						);
-
-						// Set initial width when expanding
-						const formattedWidth = formatWidth(
-							unit === "rem" ? clampedWidth / 16 : clampedWidth,
-							unit,
-						);
-						onResize(formattedWidth);
-						persistWidth(formattedWidth);
-
-						lastTogglePoint.current = e.clientX;
-						lastToggleWidth.current = clampedWidth;
+					if (currentDragDirection === "collapse" && shouldCollapse) {
+						onToggle(); // Collapse
+						lastTogglePoint.current = clientX;
 						toggleCooldown.current = true;
 						lastToggleTime.current = now;
 						return;
 					}
 				}
 
-				// Skip width calculations if panel is collapsed
-				if (isCollapsed) {
+				// Handle expanding when collapsed
+				if (
+					onToggle &&
+					isCollapsed &&
+					currentDragDirection === "expand" &&
+					dragDistanceFromToggle.current > minWidthPx * expandThreshold
+				) {
+					onToggle(); // Expand
+
+					// Calculate initial width based on exact pointer position
+					const initialWidth = calculateWidth(
+						clientX,
+						startX.current,
+						startWidth.current,
+						currentRailRect,
+					);
+
+					// Clamp to min/max
+					const clampedWidth = Math.max(
+						minWidthPx,
+						Math.min(maxWidthPx, initialWidth),
+					);
+
+					// Set initial width when expanding
+					const formattedWidth = formatWidth(
+						unit === "rem" ? clampedWidth / 16 : clampedWidth,
+						unit,
+					);
+					pendingWidth.current = formattedWidth;
+					writeResizeRootWidth(formattedWidth);
+					onResize(formattedWidth);
+					persistWidth(formattedWidth);
+
+					lastTogglePoint.current = clientX;
+					toggleCooldown.current = true;
+					lastToggleTime.current = now;
 					return;
 				}
-
-				// Calculate new width based on mouse position and drag direction
-				const newWidthPx = calculateWidth(
-					e,
-					startX.current,
-					startWidth.current,
-					currentRailRect,
-				);
-
-				// Clamp width between min and max
-				const clampedWidthPx = Math.max(
-					minWidthPx,
-					Math.min(maxWidthPx, newWidthPx),
-				);
-
-				// Convert to the target unit
-				const newWidth = unit === "rem" ? clampedWidthPx / 16 : clampedWidthPx;
-
-				// Format and update width
-				const formattedWidth = formatWidth(newWidth, unit);
-				onResize(formattedWidth);
-				persistWidth(formattedWidth);
-
-				// Update last width
-				lastWidth.current = clampedWidthPx;
 			}
-		};
 
-		const handleMouseUp = () => {
+			// Skip width calculations if panel is collapsed
+			if (isCollapsed) {
+				return;
+			}
+
+			// Calculate new width based on pointer position and drag direction
+			const newWidthPx = calculateWidth(
+				clientX,
+				startX.current,
+				startWidth.current,
+				currentRailRect,
+			);
+
+			// Clamp width between min and max
+			const clampedWidthPx = Math.max(
+				minWidthPx,
+				Math.min(maxWidthPx, newWidthPx),
+			);
+
+			// Convert to the target unit
+			const newWidth = unit === "rem" ? clampedWidthPx / 16 : clampedWidthPx;
+
+			// Format and update the live DOM width. React state and cookie commit on pointerup.
+			const formattedWidth = formatWidth(newWidth, unit);
+			pendingWidth.current = formattedWidth;
+			writeResizeRootWidth(formattedWidth);
+
+			if (startedDragging || !resizeRootRef?.current) {
+				onResize(formattedWidth);
+			}
+		},
+	);
+
+	const finishInteraction = React.useEffectEvent(
+		(pointerId: number | null, shouldToggleClick = true) => {
 			if (!isInteractingWithRail.current) return;
 
+			if (activePointerId.current !== pointerId) {
+				return;
+			}
+
+			const rail = dragRef.current;
+
+			if (pointerId !== null && rail?.hasPointerCapture(pointerId)) {
+				rail.releasePointerCapture(pointerId);
+			}
+
 			// Handle click (not drag) behavior
-			if (!isDragging.current && onToggle && enableToggle) {
+			if (shouldToggleClick && !isDragging.current && onToggle && enableToggle) {
 				onToggle();
+			}
+
+			if (isDragging.current && pendingWidth.current) {
+				onResize(pendingWidth.current);
+				persistWidth(pendingWidth.current);
 			}
 
 			// Reset all state
 			isDragging.current = false;
 			isInteractingWithRail.current = false;
-			lastWidth.current = 0;
-			lastLoggedWidth.current = 0;
+			activePointerId.current = null;
+			pendingWidth.current = null;
 			lastDragDirection.current = null;
 			lastTogglePoint.current = 0;
-			lastToggleWidth.current = 0;
 			toggleCooldown.current = false;
 			lastToggleTime.current = 0;
 			dragDistanceFromToggle.current = 0;
-			dragOffset.current = 0;
 			railRect.current = null;
+			restoreBodyUserSelect();
 			setIsDraggingRail(false);
+		},
+	);
+
+	React.useEffect(() => {
+		const handleDocumentPointerMove = (event: PointerEvent) => {
+			handleDragMove(event.clientX, event.pointerId);
+		};
+		const handleDocumentPointerUp = (event: PointerEvent) => {
+			finishInteraction(event.pointerId);
+		};
+		const handleDocumentPointerCancel = (event: PointerEvent) => {
+			finishInteraction(event.pointerId, false);
+		};
+		const handleDocumentMouseMove = (event: MouseEvent) => {
+			handleDragMove(event.clientX, null);
+		};
+		const handleDocumentMouseUp = () => {
+			finishInteraction(null);
 		};
 
-		document.addEventListener("mousemove", handleMouseMove);
-		document.addEventListener("mouseup", handleMouseUp);
+		document.addEventListener("pointermove", handleDocumentPointerMove);
+		document.addEventListener("pointerup", handleDocumentPointerUp);
+		document.addEventListener("pointercancel", handleDocumentPointerCancel);
+		document.addEventListener("mousemove", handleDocumentMouseMove);
+		document.addEventListener("mouseup", handleDocumentMouseUp);
 
 		return () => {
-			document.removeEventListener("mousemove", handleMouseMove);
-			document.removeEventListener("mouseup", handleMouseUp);
+			document.removeEventListener("pointermove", handleDocumentPointerMove);
+			document.removeEventListener("pointerup", handleDocumentPointerUp);
+			document.removeEventListener(
+				"pointercancel",
+				handleDocumentPointerCancel,
+			);
+			document.removeEventListener("mousemove", handleDocumentMouseMove);
+			document.removeEventListener("mouseup", handleDocumentMouseUp);
+			restoreBodyUserSelect();
 		};
-	}, [
-		onResize,
-		onToggle,
-		isCollapsed,
-		currentWidth,
-		persistWidth,
-		setIsDraggingRail,
-		minWidthPx,
-		maxWidthPx,
-		isIncreasingWidth,
-		calculateWidth,
-		isNested,
-		enableAutoCollapse,
-		autoCollapseThreshold,
-		expandThreshold,
-		enableToggle,
-	]);
+	}, [restoreBodyUserSelect]);
 
 	return {
 		dragRef,
 		isDragging,
+		handlePointerDown,
 		handleMouseDown,
 	};
 }
