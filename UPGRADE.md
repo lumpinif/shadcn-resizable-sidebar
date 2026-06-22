@@ -139,17 +139,27 @@ dependency or codemod work.
     Dialog title/description console warnings are gone.
   - Desktop keyboard toggle, drag resize, width cookie, and page console/errors
     pass.
-- [ ] Commit with `refactor: align sidebar primitive fixes`.
+- [x] Commit with `refactor: align sidebar primitive fixes`.
 
 ## Phase 4: Radix Single-Package Migration
 
-- [ ] Migrate Radix imports to the unified `radix-ui` package.
-- [ ] Manually review any diff touching `components/ui/sidebar.tsx`.
-- [ ] Convert `Slot` usage to `Slot.Root` after the unified package lands.
-- [ ] Remove scattered `@radix-ui/react-*` dependencies only after imports are
+- [x] Migrate Radix imports to the unified `radix-ui` package.
+- [x] Manually review any diff touching `components/ui/sidebar.tsx`.
+  - The sidebar diff only changes primitive imports and `asChild` slot plumbing.
+    Resize state, cookies, drag rail behavior, and width constants are preserved.
+- [x] Convert `Slot` usage after the unified package lands.
+  - The shadcn migration uses `SlotPrimitive.Slot` from `radix-ui`.
+- [x] Remove scattered `@radix-ui/react-*` dependencies only after imports are
   migrated.
-- [ ] Re-run build and Agent Browser smoke checks.
-- [ ] Commit with `chore: migrate radix primitives`.
+- [x] Re-run build and Agent Browser smoke checks.
+  - `bun run build` passes with the known baseline ESLint rule-load warning and
+    `metadataBase` warning.
+  - `bun run lint` still fails with the known baseline
+    `@typescript-eslint/no-unused-expressions` rule-load error.
+  - Desktop render, dropdown animation, keyboard toggle, drag resize, mobile
+    Sheet animation, and mobile Sheet accessibility all pass.
+  - Page console and page errors are empty after smoke.
+- [x] Commit with `chore: migrate radix primitives`.
 
 ## Deferred Phases
 
